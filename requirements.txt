@@ -1,9 +1,12 @@
-Flask==2.0.1
-numpy==1.19.5
+Flask
+numpy
 tensorflow==2.3.0
-joblib==1.1.0
+joblib
 lief==0.9.0
-scikit-learn==1.0.1
-gunicorn==20.1.0
-werkzeug==2.0.2
+scikit-learn
+gunicorn
+werkzeug
+pandas
+lightgbm
+tqdm
 # ember==0.1.4
