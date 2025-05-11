@@ -47,12 +47,12 @@ class MalwareClassifier:
         """
         try:
             # Parse PE file
-            pe = lief.parse(file_path)
-            if pe is None:
-                raise ValueError(f"Invalid PE file: {file_path}")
+            with open(file_path, 'rb') as f:
+                bytez = f.read()
+
+            features = self.extractor.feature_vector(bytez)
             
             # Extract features
-            features = self.extractor.feature_vector(pe)
             features = np.array(features).reshape(1, 2381)
             
             # Validate feature vector
