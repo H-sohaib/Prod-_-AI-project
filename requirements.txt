@@ -9,4 +9,5 @@ werkzeug
 pandas
 lightgbm
 tqdm
+tabulate
 # ember==0.1.4

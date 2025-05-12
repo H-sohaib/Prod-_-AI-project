@@ -1,35 +1,30 @@
 from flask import Flask, request, jsonify
 import numpy as np
-from tensorflow.keras.models import load_model
-import joblib
-import lief
-from ember.ember.features import PEFeatureExtractor
 import logging
 import os
 import tempfile
+import time
+from predict import MalwareClassifier
 
 # Initialize Flask app
 app = Flask(__name__)
 
 # Configure logging
 logging.basicConfig(filename='malware_api.log', level=logging.INFO, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+                   format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Load model and preprocessing objects
+# Initialize the malware classifier
 try:
-    model = load_model('malware_classifier_model.h5')
-    scaler = joblib.load('scaler.pkl')
-    label_encoder = joblib.load('label_encoder.pkl')
-    extractor = PEFeatureExtractor()
-    logging.info("Model and preprocessing objects loaded successfully")
+    classifier = MalwareClassifier()
+    logging.info("Malware classifier initialized successfully")
 except Exception as e:
-    logging.error(f"Failed to load model or preprocessing objects: {e}")
+    logging.error(f"Failed to initialize malware classifier: {e}")
     raise
 
 @app.route('/', methods=['GET'])
 def home():
-  
-  return "Welcome to the Malware Classification API! Use the /predict endpoint to classify malware samples."
+    return "Welcome to the Malware Classification API! Use the /predict endpoint to classify malware samples."
+
 @app.route('/predict', methods=['POST'])
 def predict():
     # Check if file is in request
@@ -47,37 +42,28 @@ def predict():
         with tempfile.NamedTemporaryFile(delete=False, suffix='.exe') as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name
-
-        # Extract LIEF features
-        pe = lief.parse(temp_file_path)
-        if pe is None:
-            logging.error(f"Invalid PE file: {file.filename}")
-            return jsonify({'error': 'Invalid PE file'}), 400
-
-        features = extractor.feature_vector(pe)
-        features = np.array(features).reshape(1, 2381)
-        if features.shape != (1, 2381) or np.any(np.isnan(features)):
-            logging.error(f"Invalid feature vector for {file.filename}")
-            return jsonify({'error': 'Invalid feature vector'}), 400
-
-        # Preprocess features
-        features_normalized = scaler.transform(features)
-
-        # Predict
-        prediction = model.predict(features_normalized, verbose=0)
-        predicted_class = np.argmax(prediction, axis=1)
-        category = label_encoder.inverse_transform(predicted_class)[0]
-        confidence = float(prediction[0, predicted_class[0]])
-
-        # Log prediction
-        logging.info(f"File: {file.filename}, Category: {category}, Confidence: {confidence}")
-
+        
+        start_time = time.time()
+        
+        # Use the classifier from predict.py to classify the file
+        result = classifier.classify_file(temp_file_path)
+        
         # Clean up
         os.unlink(temp_file_path)
-
+        
+        # Check if there was an error
+        if 'error' in result:
+            logging.error(f"Classification failed for {file.filename}: {result['error']}")
+            return jsonify({'error': result['error']}), 400
+        
+        # Log prediction
+        logging.info(f"File: {file.filename}, Category: {result['category']}, Confidence: {result['confidence']}")
+        
+        # Return results
         return jsonify({
-            'category': category,
-            'confidence': confidence
+            'category': result['category'],
+            'confidence': result['confidence'],
+            'processing_time': result['processing_time']
         })
 
     except Exception as e:

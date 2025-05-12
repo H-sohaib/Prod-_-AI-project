@@ -14,8 +14,8 @@ class MalwareClassifier:
     A class for malware classification using a pre-trained deep learning model.
     """
     
-    def __init__(self, model_path='malware_classifier_model.h5', 
-                 scaler_path='scaler.pkl', encoder_path='label_encoder.pkl'):
+    def __init__(self, model_path='model/malware_classifier_model', 
+                 scaler_path='model/scaler.pkl', encoder_path='model/label_encoder.pkl'):
         """
         Initialize the classifier by loading model and preprocessing objects.
         
@@ -36,33 +36,25 @@ class MalwareClassifier:
             sys.exit(1)
     
     def extract_features(self, file_path):
-        """
-        Extract features from a PE file.
-        
-        Args:
-            file_path (str): Path to the PE file
-            
-        Returns:
-            numpy.ndarray: Feature vector with shape (1, 2381)
-        """
         try:
-            # Parse PE file
             with open(file_path, 'rb') as f:
                 bytez = f.read()
 
+            # Simple LIEF PE validation
+            if not lief.is_pe(file_path):
+                raise ValueError("Not a valid PE file")
+
             features = self.extractor.feature_vector(bytez)
-            
-            # Extract features
             features = np.array(features).reshape(1, 2381)
-            
-            # Validate feature vector
+
             if features.shape != (1, 2381) or np.any(np.isnan(features)):
                 raise ValueError(f"Invalid feature vector for {file_path}")
-                
+
             return features
         except Exception as e:
             print(f"Feature extraction failed: {e}")
             raise
+
     
     def classify_file(self, file_path):
         """
