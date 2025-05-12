@@ -7,28 +7,13 @@ RUN apt-get update && apt-get install -y \
   libgomp1 \
   && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip just to avoid future issues
-RUN pip install --upgrade pip
-
-# Install Python dependencies
-RUN pip install \
-  setuptools \
-  flask \
-  numpy \
-  tensorflow==2.3 \
-  joblib \
-  pandas \
-  lightgbm \
-  scikit-learn \
-  tqdm \
-  lief==0.9.0
-
-# Set the working directory inside the container
+# Set the working directory
 WORKDIR /app
 
-# Copy your app files if needed
-# COPY ./app /app
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# Default command (override in docker-compose if needed)
-# COPY ./app /app
-# CMD ["python", "main.py"]
+# No need to COPY app files — they're mounted via volume
+CMD ["python", "main.py"]
